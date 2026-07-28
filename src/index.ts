@@ -1,4 +1,4 @@
-import { Bot, InputFile, Keyboard } from "grammy";
+import { Bot, InputFile, Keyboard, InlineKeyboard } from "grammy";
 import { OpenAI } from "openai";
 import "dotenv/config";
 import {
@@ -12,6 +12,7 @@ import {
 import fetch from "node-fetch";
 import db from "./db.js";
 import express, { Request, Response } from "express";
+import modelsData from "./models.json" with { type: "json" };
 
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 const openai = new OpenAI({
@@ -26,6 +27,13 @@ const openai = new OpenAI({
 const allowedUsers = process.env.ALLOWED_USERS
   ? process.env.ALLOWED_USERS.split(",").map((id) => id.trim())
   : [];
+
+// Загружаем модели из JSON
+const MODELS: Record<
+  string,
+  { name: string; model: string; emoji: string; price: string }
+> = modelsData.paid;
+const FREE_MODELS: Array<{ name: string; model: string }> = modelsData.free;
 
 // Whitelist — только для личных чатов
 bot.use(async (ctx, next) => {
@@ -118,98 +126,11 @@ function shouldReply(ctx: any): boolean {
   return true;
 }
 
-// === МОДЕЛИ ===
-const MODELS: Record<
-  string,
-  { name: string; model: string; emoji: string; price: string }
-> = {
-  auto: { name: "Авто", model: "openrouter/auto", emoji: "", price: "авто" },
-  free: {
-    name: "Бесплатная",
-    model: "google/gemma-2b-it:free",
-    emoji: "",
-    price: "бесплатно",
-  },
-  qwen3: {
-    name: "Qwen 3.7 Flash",
-    model: "qwen/qwen3.7-flash",
-    emoji: "🐉",
-    price: "$0.00003",
-  },
-  ultra: {
-    name: "Ультра-дешёвая",
-    model: "meta/llama-3.2-1b-instruct",
-    emoji: "💸",
-    price: "$0.00003",
-  },
-  cheap: {
-    name: "Дешёвая",
-    model: "qwen/qwen-2.5-7b-instruct",
-    emoji: "💰",
-    price: "$0.00004",
-  },
-  fast: {
-    name: "Быстрая",
-    model: "openai/gpt-4o-mini",
-    emoji: "⚡",
-    price: "$0.00015",
-  },
-  smart: {
-    name: "Умная",
-    model: "openai/gpt-4o",
-    emoji: "🧠",
-    price: "$0.0025",
-  },
-  code: {
-    name: "Для кода",
-    model: "deepseek/deepseek-coder",
-    emoji: "",
-    price: "$0.0007",
-  },
-  creative: {
-    name: "Креативная",
-    model: "anthropic/claude-3.5-sonnet",
-    emoji: "🎨",
-    price: "$0.003",
-  },
-};
-
-// Бесплатные модели
-const FREE_MODELS = [
-  { name: "Google Gemma 4 31B", model: "google/gemma-4-31b-it:free" },
-  { name: "Google Gemma 4 26B A4B", model: "google/gemma-4-26b-a4b-it:free" },
-  { name: "Google Gemma 4 3B", model: "google/gemma-4-3b-it:free" },
-  { name: "Google Gemma 3 12B", model: "google/gemma-3-12b-it:free" },
-  { name: "Google Gemma 3 4B", model: "google/gemma-3-4b-it:free" },
-  { name: "NVIDIA Nemotron 3 Ultra", model: "nvidia/nemotron-3-ultra:free" },
-  { name: "NVIDIA Nemotron 3 Super", model: "nvidia/nemotron-3-super:free" },
-  {
-    name: "NVIDIA Nemotron 3 Nano 30B",
-    model: "nvidia/nemotron-3-nano-30b-a3b:free",
-  },
-  {
-    name: "NVIDIA Nemotron 3 Nano Omni",
-    model: "nvidia/nemotron-3-nano-omni:free",
-  },
-  {
-    name: "NVIDIA Nemotron Nano 12B",
-    model: "nvidia/nemotron-nano-12b-2-vl:free",
-  },
-  { name: "NVIDIA Nemotron Nano 9B", model: "nvidia/nemotron-nano-9b-v2:free" },
-  { name: "Poolside Laguna S 2.1", model: "poolside/laguna-s-2.1:free" },
-  { name: "Poolside Laguna XS 2.1", model: "poolside/laguna-xs-2.1:free" },
-  { name: "Poolside Laguna M 1", model: "poolside/laguna-m-1:free" },
-  { name: "Cohere North Mini Code", model: "cohere/north-mini-code:free" },
-  { name: "OpenAI GPT-OSS 20B", model: "openai/gpt-oss-20b:free" },
-  { name: "OpenAI GPT-OSS 120B", model: "openai/gpt-oss-120b:free" },
-  { name: "Ling 3.0 Flash", model: "ling-ai/ling-3.0-flash:free" },
-];
-
 function getMainKeyboard() {
   return new Keyboard()
     .text("💬 Чат")
     .text("🖼 Фото")
-    .text(" Imagine")
+    .text("🎨 Imagine")
     .row()
     .text("🎤 Голос")
     .text("🤖 Модель")
@@ -218,6 +139,19 @@ function getMainKeyboard() {
     .text("🗑 Очистить")
     .text("ℹ️ Помощь")
     .resized();
+}
+
+// === Клавиатура бесплатных моделей ===
+function getFreeModelsKeyboard() {
+  const keyboard = new InlineKeyboard();
+
+  FREE_MODELS.forEach((m, i) => {
+    keyboard.text(`${i + 1}. ${m.name}`, `setmodel_${m.model}`);
+    keyboard.row();
+  });
+
+  keyboard.text("🔙 Назад", "menu_back");
+  return keyboard;
 }
 
 async function generateImage(prompt: string): Promise<string | null> {
@@ -287,6 +221,37 @@ async function sendGeneratedImage(
   }
 }
 
+// === ОБРАБОТЧИК CALLBACK (КНОПКИ) ===
+bot.on("callback_query:data", async (ctx) => {
+  try {
+    const data = ctx.callbackQuery.data;
+    const userChatId = ctx.chat?.id.toString() || "";
+
+    if (data.startsWith("setmodel_")) {
+      const modelId = data.replace("setmodel_", "");
+      setUserModel(userChatId, modelId);
+
+      await ctx.answerCallbackQuery({ text: `✅ Модель установлена!` });
+      await ctx.editMessageText(
+        `✅ Выбрана модель: \`${modelId}\`\n\nТеперь все сообщения будут обрабатываться этой моделью.`,
+        { parse_mode: "Markdown" },
+      );
+    }
+
+    if (data === "menu_back") {
+      await ctx.editMessageText(
+        "🆓 *Бесплатные модели*\n\nНажми на кнопку чтобы выбрать:",
+        {
+          parse_mode: "Markdown",
+          reply_markup: getFreeModelsKeyboard(),
+        },
+      );
+    }
+  } catch (error: any) {
+    console.error("Callback ошибка:", error.message);
+  }
+});
+
 // Обработчик текста
 bot.on("message:text", async (ctx) => {
   if (!shouldReply(ctx)) return;
@@ -302,7 +267,7 @@ bot.on("message:text", async (ctx) => {
 
   // === ОБРАБОТКА КНОПОК МЕНЮ ===
   switch (userMessage) {
-    case "💬 Чат":
+    case " Чат":
       await ctx.reply(
         "💬 *Режим чата*\n\n" +
           "Просто пиши текст — я отвечу и запомню контекст.\n\n" +
@@ -311,7 +276,7 @@ bot.on("message:text", async (ctx) => {
       );
       return;
 
-    case " Фото":
+    case "🖼 Фото":
       await ctx.reply(
         "🖼 *Работа с фото*\n\n" +
           "Отправь фото с подписью:\n" +
@@ -354,7 +319,7 @@ bot.on("message:text", async (ctx) => {
         )
         .all();
       if (chats.length === 0) {
-        await ctx.reply("📭 Пока нет статистики");
+        await ctx.reply(" Пока нет статистики");
         return;
       }
       let text = "📊 *Статистика:*\n\n";
@@ -373,7 +338,7 @@ bot.on("message:text", async (ctx) => {
     case "ℹ️ Помощь":
       await ctx.reply(
         "📚 *Помощь*\n\n" +
-          "💬 Текст — помню контекст\n" +
+          " Текст — помню контекст\n" +
           "🖼 Фото — анализирую и улучшаю\n" +
           "🎨 /imagine — генерирую картинки\n" +
           "🎤 Голосовые — распознаю\n" +
@@ -397,10 +362,10 @@ bot.on("message:text", async (ctx) => {
       "🤖 *Привет! Я умный бот с памятью!*\n\n" +
         "💬 Текст + контекст\n" +
         "🖼️ Фото — анализирую и улучшаю\n" +
-        "🎨 /imagine — генерирую картинки\n" +
+        " /imagine — генерирую картинки\n" +
         "🎤 Голосовые — распознаю\n" +
         "🤖 /model — выбор модели\n\n" +
-        "Используй кнопки внизу ",
+        "Используй кнопки внизу 👇",
       {
         parse_mode: "Markdown",
         reply_markup: getMainKeyboard(),
@@ -411,7 +376,7 @@ bot.on("message:text", async (ctx) => {
 
   if (userMessage === "/clear") {
     clearHistory(chatId);
-    await ctx.reply("️ История очищена!");
+    await ctx.reply("🗑️ История очищена!");
     return;
   }
 
@@ -423,7 +388,7 @@ bot.on("message:text", async (ctx) => {
 
   if (userMessage === "/model") {
     const current = getUserModel(userChatId);
-    let text = "🤖 *Выбор модели*\n\nТекущая: `" + current + "`\n\n";
+    let text = " *Выбор модели*\n\nТекущая: `" + current + "`\n\n";
     Object.entries(MODELS).forEach(([key, val]) => {
       text += `${val.emoji} /${key} — ${val.name} (${val.price})\n`;
     });
@@ -433,12 +398,13 @@ bot.on("message:text", async (ctx) => {
   }
 
   if (userMessage === "/freemodels") {
-    let text = "🆓 *Бесплатные модели:*\n\n";
-    FREE_MODELS.forEach((m, i) => {
-      text += `${i + 1}. *${m.name}*\n   \`${m.model}\`\n\n`;
-    });
-    text += "Чтобы выбрать: скопируй ID и напиши /setmodel <id>";
-    await ctx.reply(text, { parse_mode: "Markdown" });
+    await ctx.reply(
+      "🆓 *Бесплатные модели*\n\nНажми на кнопку чтобы выбрать:",
+      {
+        parse_mode: "Markdown",
+        reply_markup: getFreeModelsKeyboard(),
+      },
+    );
     return;
   }
 
@@ -506,11 +472,11 @@ bot.on("message:text", async (ctx) => {
   if (userMessage.startsWith("/imagine")) {
     const prompt = userMessage.replace("/imagine", "").trim();
     if (!prompt) {
-      await ctx.reply(" Использование: /imagine [описание]");
+      await ctx.reply("🎨 Использование: /imagine [описание]");
       return;
     }
     try {
-      await ctx.reply("🎨 Генерирую...");
+      await ctx.reply(" Генерирую...");
       const result = await generateImage(prompt);
       if (result) {
         const sent = await sendGeneratedImage(ctx, result);
@@ -523,7 +489,7 @@ bot.on("message:text", async (ctx) => {
       }
     } catch (error: any) {
       console.error("Ошибка:", error.message);
-      await ctx.reply(`️ Ошибка: ${error.message}`);
+      await ctx.reply(`⚠️ Ошибка: ${error.message}`);
     }
     return;
   }
@@ -551,7 +517,7 @@ bot.on("message:text", async (ctx) => {
     await sendLongMessage(ctx, replyText);
   } catch (error: any) {
     console.error("Ошибка:", error.message);
-    await ctx.reply("⚠️ Ошибка. Попробуй ещё раз.");
+    await ctx.reply("️ Ошибка. Попробуй ещё раз.");
   }
 });
 
@@ -595,7 +561,7 @@ bot.on("message:photo", async (ctx) => {
       if (result) {
         await sendGeneratedImage(ctx, result);
       } else {
-        await ctx.reply("❌ Не удалось");
+        await ctx.reply(" Не удалось");
       }
     } else {
       const response = await openai.chat.completions.create({
@@ -658,7 +624,7 @@ bot.on("message:voice", async (ctx) => {
     );
   } catch (error: any) {
     console.error("Ошибка с голосовым:", error.message);
-    await ctx.reply("⚠️ Не смог распознать.");
+    await ctx.reply("️ Не смог распознать.");
   }
 });
 
