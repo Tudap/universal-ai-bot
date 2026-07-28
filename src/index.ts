@@ -64,38 +64,20 @@ function shouldReply(ctx: any): boolean {
   // В личных чатах всегда отвечаем
   if (chatType === "private") return true;
 
-  // В группах — только если есть упоминание бота
+  // В группах — только если есть упоминание бота или команда
   if (chatType === "group" || chatType === "supergroup") {
-    // Проверяем entities сообщения
-    const entities = ctx.message?.entities || [];
-    const botUsername = ctx.botInfo?.username;
+    const text = ctx.message?.text || ctx.message?.caption || "";
 
-    for (const entity of entities) {
-      if (entity.type === "mention" || entity.type === "text_mention") {
-        // Получаем текст упоминания
-        const text = ctx.message.text || ctx.message.caption || "";
-        const mention = text.substring(
-          entity.offset,
-          entity.offset + entity.length,
-        );
+    // Проверяем команды
+    if (text.startsWith("/")) return true;
 
-        // Если упоминается наш бот
-        if (
-          mention === `@${botUsername}` ||
-          mention.startsWith(`@${botUsername}`)
-        ) {
-          return true;
-        }
-      }
+    // Проверяем упоминание бота
+    if (ctx.me?.username && text.includes(`@${ctx.me.username}`)) {
+      return true;
     }
 
     // Проверяем reply на сообщение бота
     if (ctx.message?.reply_to_message?.from?.is_bot) {
-      return true;
-    }
-
-    // Проверяем команды (они всегда начинаются с /)
-    if (ctx.message?.text?.startsWith("/")) {
       return true;
     }
 
@@ -221,7 +203,6 @@ async function sendGeneratedImage(
 
 // Обработчик текста
 bot.on("message:text", async (ctx) => {
-  // Проверяем нужно ли отвечать
   if (!shouldReply(ctx)) return;
 
   const chatId = getThreadId(ctx);
@@ -235,7 +216,7 @@ bot.on("message:text", async (ctx) => {
   switch (userMessage) {
     case "💬 Чат":
       await ctx.reply(
-        "💬 *Режим чата*\n\n" +
+        " *Режим чата*\n\n" +
           "Просто пиши текст — я отвечу и запомню контекст.\n\n" +
           `Текущая модель: \`${getUserModel(userChatId)}\``,
         { parse_mode: "Markdown" },
@@ -252,7 +233,7 @@ bot.on("message:text", async (ctx) => {
       );
       return;
 
-    case " Imagine":
+    case "🎨 Imagine":
       await ctx.reply(
         "🎨 *Генерация картинок*\n\n" +
           "Напиши: `/imagine [описание]`\n\n" +
@@ -263,12 +244,12 @@ bot.on("message:text", async (ctx) => {
 
     case "🎤 Голос":
       await ctx.reply(
-        "🎤 *Голосовые*\n\n" + "Отправь голосовое — я распознаю и отвечу.",
+        " *Голосовые*\n\n" + "Отправь голосовое — я распознаю и отвечу.",
         { parse_mode: "Markdown" },
       );
       return;
 
-    case " Модель":
+    case "🤖 Модель":
       const current = getUserModel(userChatId);
       let text = "🤖 *Выбор модели*\n\nТекущая: `" + current + "`\n\n";
       Object.entries(MODELS).forEach(([key, val]) => {
@@ -284,7 +265,7 @@ bot.on("message:text", async (ctx) => {
         )
         .all();
       if (chats.length === 0) {
-        await ctx.reply(" Пока нет статистики");
+        await ctx.reply("📭 Пока нет статистики");
         return;
       }
       let text = "📊 *Статистика:*\n\n";
@@ -297,13 +278,13 @@ bot.on("message:text", async (ctx) => {
 
     case "🗑 Очистить":
       clearHistory(chatId);
-      await ctx.reply("️ История очищена!");
+      await ctx.reply("🗑️ История очищена!");
       return;
 
     case "ℹ️ Помощь":
       await ctx.reply(
         "📚 *Помощь*\n\n" +
-          " Текст — помню контекст\n" +
+          "💬 Текст — помню контекст\n" +
           "🖼 Фото — анализирую и улучшаю\n" +
           "🎨 /imagine — генерирую картинки\n" +
           "🎤 Голосовые — распознаю\n" +
@@ -323,10 +304,10 @@ bot.on("message:text", async (ctx) => {
 
   if (userMessage === "/start" || userMessage === "/menu") {
     await ctx.reply(
-      "🤖 *Привет! Я умный бот с памятью!*\n\n" +
+      " *Привет! Я умный бот с памятью!*\n\n" +
         "💬 Текст + контекст\n" +
         "🖼️ Фото — анализирую и улучшаю\n" +
-        " /imagine — генерирую картинки\n" +
+        "🎨 /imagine — генерирую картинки\n" +
         "🎤 Голосовые — распознаю\n" +
         "🤖 /model — выбор модели\n\n" +
         "Используй кнопки внизу 👇",
@@ -346,13 +327,13 @@ bot.on("message:text", async (ctx) => {
 
   if (userMessage === "/history") {
     const history = getHistory(chatId, 5);
-    await ctx.reply(`📚 Последние ${history.length} сообщений.`);
+    await ctx.reply(` Последние ${history.length} сообщений.`);
     return;
   }
 
   if (userMessage === "/model") {
     const current = getUserModel(userChatId);
-    let text = " *Выбор модели*\n\nТекущая: `" + current + "`\n\n";
+    let text = "🤖 *Выбор модели*\n\nТекущая: `" + current + "`\n\n";
     Object.entries(MODELS).forEach(([key, val]) => {
       text += `${val.emoji} /${key} — ${val.name} (${val.price})\n`;
     });
@@ -368,7 +349,7 @@ bot.on("message:text", async (ctx) => {
   }
 
   if (userMessage === "/price") {
-    let text = " *Цены:*\n\n";
+    let text = "💰 *Цены:*\n\n";
     Object.entries(MODELS).forEach(([key, val]) => {
       text += `${val.emoji} ${val.name}: ${val.price}\n`;
     });
@@ -387,7 +368,7 @@ bot.on("message:text", async (ctx) => {
       await ctx.reply("📭 Пока нет статистики");
       return;
     }
-    let text = "📊 *Статистика:*\n\n";
+    let text = " *Статистика:*\n\n";
     chats.forEach((chat: any) => {
       text += `• ${chat.title || chat.id} — ${chat.msg_count} сообщ.\n`;
     });
@@ -476,7 +457,7 @@ bot.on("message:photo", async (ctx) => {
       caption.toLowerCase().includes("улучши") ||
       caption.toLowerCase().includes("фотореализм")
     ) {
-      await ctx.reply(" Генерирую улучшенную версию...");
+      await ctx.reply("🎨 Генерирую улучшенную версию...");
 
       const describeResponse = await openai.chat.completions.create({
         model: "openai/gpt-4o-mini",
@@ -565,4 +546,4 @@ app.listen(PORT, () => {
 });
 
 bot.start();
-console.log("🚀 Бот запущен!");
+console.log(" Бот запущен!");
