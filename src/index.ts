@@ -57,6 +57,54 @@ function getThreadId(ctx: any): string {
   return threadId ? `${chatId}_${threadId}` : chatId;
 }
 
+// === ПРОВЕРКА: нужно ли отвечать в группе ===
+function shouldReply(ctx: any): boolean {
+  const chatType = ctx.chat.type;
+
+  // В личных чатах всегда отвечаем
+  if (chatType === "private") return true;
+
+  // В группах — только если есть упоминание бота
+  if (chatType === "group" || chatType === "supergroup") {
+    // Проверяем entities сообщения
+    const entities = ctx.message?.entities || [];
+    const botUsername = ctx.botInfo?.username;
+
+    for (const entity of entities) {
+      if (entity.type === "mention" || entity.type === "text_mention") {
+        // Получаем текст упоминания
+        const text = ctx.message.text || ctx.message.caption || "";
+        const mention = text.substring(
+          entity.offset,
+          entity.offset + entity.length,
+        );
+
+        // Если упоминается наш бот
+        if (
+          mention === `@${botUsername}` ||
+          mention.startsWith(`@${botUsername}`)
+        ) {
+          return true;
+        }
+      }
+    }
+
+    // Проверяем reply на сообщение бота
+    if (ctx.message?.reply_to_message?.from?.is_bot) {
+      return true;
+    }
+
+    // Проверяем команды (они всегда начинаются с /)
+    if (ctx.message?.text?.startsWith("/")) {
+      return true;
+    }
+
+    return false;
+  }
+
+  return true;
+}
+
 const MODELS: Record<
   string,
   { name: string; model: string; emoji: string; price: string }
@@ -89,12 +137,11 @@ const MODELS: Record<
   },
 };
 
-// === ГЛАВНАЯ КЛАВИАТУРА (всегда видна) ===
 function getMainKeyboard() {
   return new Keyboard()
     .text("💬 Чат")
     .text(" Фото")
-    .text(" Imagine")
+    .text("🎨 Imagine")
     .row()
     .text("🎤 Голос")
     .text("🤖 Модель")
@@ -102,10 +149,9 @@ function getMainKeyboard() {
     .row()
     .text("🗑 Очистить")
     .text("ℹ️ Помощь")
-    .resized(); // Убираем лишние кнопки клавиатуры телефона
+    .resized();
 }
 
-// Генерация изображений
 async function generateImage(prompt: string): Promise<string | null> {
   const response = await fetch(
     "https://openrouter.ai/api/v1/chat/completions",
@@ -175,6 +221,9 @@ async function sendGeneratedImage(
 
 // Обработчик текста
 bot.on("message:text", async (ctx) => {
+  // Проверяем нужно ли отвечать
+  if (!shouldReply(ctx)) return;
+
   const chatId = getThreadId(ctx);
   const userChatId = ctx.chat?.id.toString() || "";
 
@@ -193,7 +242,7 @@ bot.on("message:text", async (ctx) => {
       );
       return;
 
-    case " Фото":
+    case "🖼 Фото":
       await ctx.reply(
         "🖼 *Работа с фото*\n\n" +
           "Отправь фото с подписью:\n" +
@@ -203,7 +252,7 @@ bot.on("message:text", async (ctx) => {
       );
       return;
 
-    case "🎨 Imagine":
+    case " Imagine":
       await ctx.reply(
         "🎨 *Генерация картинок*\n\n" +
           "Напиши: `/imagine [описание]`\n\n" +
@@ -219,7 +268,7 @@ bot.on("message:text", async (ctx) => {
       );
       return;
 
-    case "🤖 Модель":
+    case " Модель":
       const current = getUserModel(userChatId);
       let text = "🤖 *Выбор модели*\n\nТекущая: `" + current + "`\n\n";
       Object.entries(MODELS).forEach(([key, val]) => {
@@ -235,10 +284,10 @@ bot.on("message:text", async (ctx) => {
         )
         .all();
       if (chats.length === 0) {
-        await ctx.reply("📭 Пока нет статистики");
+        await ctx.reply(" Пока нет статистики");
         return;
       }
-      let text = " *Статистика:*\n\n";
+      let text = "📊 *Статистика:*\n\n";
       chats.forEach((chat: any) => {
         text += `• ${chat.title || chat.id} — ${chat.msg_count} сообщ.\n`;
       });
@@ -248,13 +297,13 @@ bot.on("message:text", async (ctx) => {
 
     case "🗑 Очистить":
       clearHistory(chatId);
-      await ctx.reply("🗑️ История очищена!");
+      await ctx.reply("️ История очищена!");
       return;
 
     case "ℹ️ Помощь":
       await ctx.reply(
         "📚 *Помощь*\n\n" +
-          "💬 Текст — помню контекст\n" +
+          " Текст — помню контекст\n" +
           "🖼 Фото — анализирую и улучшаю\n" +
           "🎨 /imagine — генерирую картинки\n" +
           "🎤 Голосовые — распознаю\n" +
@@ -277,7 +326,7 @@ bot.on("message:text", async (ctx) => {
       "🤖 *Привет! Я умный бот с памятью!*\n\n" +
         "💬 Текст + контекст\n" +
         "🖼️ Фото — анализирую и улучшаю\n" +
-        "🎨 /imagine — генерирую картинки\n" +
+        " /imagine — генерирую картинки\n" +
         "🎤 Голосовые — распознаю\n" +
         "🤖 /model — выбор модели\n\n" +
         "Используй кнопки внизу 👇",
@@ -303,7 +352,7 @@ bot.on("message:text", async (ctx) => {
 
   if (userMessage === "/model") {
     const current = getUserModel(userChatId);
-    let text = "🤖 *Выбор модели*\n\nТекущая: `" + current + "`\n\n";
+    let text = " *Выбор модели*\n\nТекущая: `" + current + "`\n\n";
     Object.entries(MODELS).forEach(([key, val]) => {
       text += `${val.emoji} /${key} — ${val.name} (${val.price})\n`;
     });
@@ -319,7 +368,7 @@ bot.on("message:text", async (ctx) => {
   }
 
   if (userMessage === "/price") {
-    let text = "💰 *Цены:*\n\n";
+    let text = " *Цены:*\n\n";
     Object.entries(MODELS).forEach(([key, val]) => {
       text += `${val.emoji} ${val.name}: ${val.price}\n`;
     });
@@ -413,6 +462,8 @@ bot.on("message:text", async (ctx) => {
 
 // Фото
 bot.on("message:photo", async (ctx) => {
+  if (!shouldReply(ctx)) return;
+
   const chatId = getThreadId(ctx);
   await ctx.replyWithChatAction("typing");
 
@@ -425,7 +476,7 @@ bot.on("message:photo", async (ctx) => {
       caption.toLowerCase().includes("улучши") ||
       caption.toLowerCase().includes("фотореализм")
     ) {
-      await ctx.reply("🎨 Генерирую улучшенную версию...");
+      await ctx.reply(" Генерирую улучшенную версию...");
 
       const describeResponse = await openai.chat.completions.create({
         model: "openai/gpt-4o-mini",
@@ -475,6 +526,8 @@ bot.on("message:photo", async (ctx) => {
 
 // Голосовые
 bot.on("message:voice", async (ctx) => {
+  if (!shouldReply(ctx)) return;
+
   const chatId = getThreadId(ctx);
   await ctx.replyWithChatAction("typing");
 
@@ -508,7 +561,7 @@ bot.on("message:voice", async (ctx) => {
 
 // Запуск
 app.listen(PORT, () => {
-  console.log(`🏥 Health check: http://localhost:${PORT}/health`);
+  console.log(` Health check: http://localhost:${PORT}/health`);
 });
 
 bot.start();
