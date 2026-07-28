@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 
 const db = new Database("bot.db");
 
-// Создаём таблицы
+// Создаём таблицы БЕЗ FOREIGN KEY (чтобы не было ошибок)
 db.exec(`
   CREATE TABLE IF NOT EXISTS chats (
     id TEXT PRIMARY KEY,
@@ -16,8 +16,7 @@ db.exec(`
     chat_id TEXT NOT NULL,
     role TEXT NOT NULL,
     content TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (chat_id) REFERENCES chats(id)
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
   CREATE TABLE IF NOT EXISTS user_settings (
@@ -41,9 +40,17 @@ export function getChat(id: string, type: string, title?: string) {
 }
 
 export function addMessage(chatId: string, role: string, content: string) {
-  db.prepare(
-    "INSERT INTO messages (chat_id, role, content) VALUES (?, ?, ?)",
-  ).run(chatId, role, content);
+  try {
+    // Сначала гарантируем что чат существует
+    getChat(chatId, "unknown");
+
+    // Потом добавляем сообщение
+    db.prepare(
+      "INSERT INTO messages (chat_id, role, content) VALUES (?, ?, ?)",
+    ).run(chatId, role, content);
+  } catch (error: any) {
+    console.error("Ошибка добавления сообщения:", error.message);
+  }
 }
 
 export function getHistory(chatId: string, limit: number = 10) {
