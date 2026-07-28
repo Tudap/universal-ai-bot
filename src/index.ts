@@ -29,15 +29,12 @@ const allowedUsers = process.env.ALLOWED_USERS
 
 // Whitelist — только для личных чатов
 bot.use(async (ctx, next) => {
-  // Проверяем что chat существует
   if (!ctx.chat) return next();
 
-  // В группах пропускаем всех
   if (ctx.chat.type === "group" || ctx.chat.type === "supergroup") {
     return next();
   }
 
-  // В личных чатах проверяем whitelist
   if (allowedUsers.length === 0) return next();
   const userId = ctx.from?.id.toString();
   if (!userId || !allowedUsers.includes(userId)) {
@@ -67,6 +64,37 @@ function getThreadId(ctx: any): string {
   return threadId ? `${chatId}_${threadId}` : chatId;
 }
 
+// === ФУНКЦИЯ ДЛЯ ДЛИННЫХ СООБЩЕНИЙ ===
+async function sendLongMessage(ctx: any, text: string) {
+  const MAX_LENGTH = 4000;
+
+  if (text.length <= MAX_LENGTH) {
+    await ctx.reply(text);
+    return;
+  }
+
+  const parts: string[] = [];
+  let currentPart = "";
+
+  for (const line of text.split("\n")) {
+    if ((currentPart + "\n" + line).length > MAX_LENGTH) {
+      parts.push(currentPart);
+      currentPart = line;
+    } else {
+      currentPart += (currentPart ? "\n" : "") + line;
+    }
+  }
+
+  if (currentPart) {
+    parts.push(currentPart);
+  }
+
+  for (const part of parts) {
+    await ctx.reply(part);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+}
+
 // === ПРОВЕРКА: нужно ли отвечать в группе ===
 function shouldReply(ctx: any): boolean {
   if (!ctx.chat) return false;
@@ -74,33 +102,16 @@ function shouldReply(ctx: any): boolean {
   const chatType = ctx.chat.type;
   const text = ctx.message?.text || ctx.message?.caption || "";
 
-  console.log(`[shouldReply] Тип чата: ${chatType}`);
-  console.log(`[shouldReply] Текст: "${text}"`);
-  console.log(`[shouldReply] Username бота: ${ctx.me?.username}`);
-
-  if (chatType === "private") {
-    console.log("[shouldReply] ✅ Личный чат");
-    return true;
-  }
+  if (chatType === "private") return true;
 
   if (chatType === "group" || chatType === "supergroup") {
-    if (text.startsWith("/")) {
-      console.log("[shouldReply] ✅ Команда");
-      return true;
-    }
+    if (text.startsWith("/")) return true;
 
     const botUsername = ctx.me?.username || "parf_universal_ai_bot";
-    if (text.includes(`@${botUsername}`)) {
-      console.log("[shouldReply] ✅ Упоминание бота");
-      return true;
-    }
+    if (text.includes(`@${botUsername}`)) return true;
 
-    if (ctx.message?.reply_to_message?.from?.is_bot) {
-      console.log("[shouldReply] ✅ Reply на бота");
-      return true;
-    }
+    if (ctx.message?.reply_to_message?.from?.is_bot) return true;
 
-    console.log("[shouldReply] ❌ Нет причины отвечать");
     return false;
   }
 
@@ -159,7 +170,7 @@ function getMainKeyboard() {
     .text("🤖 Модель")
     .text("📊 Статистика")
     .row()
-    .text("🗑 Очистить")
+    .text(" Очистить")
     .text("ℹ️ Помощь")
     .resized();
 }
@@ -238,7 +249,6 @@ bot.on("message:text", async (ctx) => {
   const chatId = getThreadId(ctx);
   const userChatId = ctx.chat?.id.toString() || "";
 
-  // Создаём чат СНАЧАЛА (чтобы не было FOREIGN KEY ошибки)
   getChat(chatId, ctx.chat.type, ctx.chat.title || undefined);
 
   await ctx.replyWithChatAction("typing");
@@ -249,7 +259,7 @@ bot.on("message:text", async (ctx) => {
   switch (userMessage) {
     case "💬 Чат":
       await ctx.reply(
-        " *Режим чата*\n\n" +
+        "💬 *Режим чата*\n\n" +
           "Просто пиши текст — я отвечу и запомню контекст.\n\n" +
           `Текущая модель: \`${getUserModel(userChatId)}\``,
         { parse_mode: "Markdown" },
@@ -266,7 +276,7 @@ bot.on("message:text", async (ctx) => {
       );
       return;
 
-    case " Imagine":
+    case "🎨 Imagine":
       await ctx.reply(
         "🎨 *Генерация картинок*\n\n" +
           "Напиши: `/imagine [описание]`\n\n" +
@@ -284,7 +294,7 @@ bot.on("message:text", async (ctx) => {
 
     case "🤖 Модель":
       const current = getUserModel(userChatId);
-      let text = " *Выбор модели*\n\nТекущая: `" + current + "`\n\n";
+      let text = "🤖 *Выбор модели*\n\nТекущая: `" + current + "`\n\n";
       Object.entries(MODELS).forEach(([key, val]) => {
         text += `${val.emoji} /${key} — ${val.name} (${val.price})\n`;
       });
@@ -309,17 +319,17 @@ bot.on("message:text", async (ctx) => {
       return;
     }
 
-    case " Очистить":
+    case "🗑 Очистить":
       clearHistory(chatId);
       await ctx.reply("🗑️ История очищена!");
       return;
 
-    case "ℹ️ Помощь":
+    case "️ Помощь":
       await ctx.reply(
         "📚 *Помощь*\n\n" +
           "💬 Текст — помню контекст\n" +
           "🖼 Фото — анализирую и улучшаю\n" +
-          " /imagine — генерирую картинки\n" +
+          "🎨 /imagine — генерирую картинки\n" +
           "🎤 Голосовые — распознаю\n" +
           "🤖 /model — выбор модели\n\n" +
           "Команды:\n" +
@@ -382,7 +392,7 @@ bot.on("message:text", async (ctx) => {
   }
 
   if (userMessage === "/price") {
-    let text = " *Цены:*\n\n";
+    let text = "💰 *Цены:*\n\n";
     Object.entries(MODELS).forEach(([key, val]) => {
       text += `${val.emoji} ${val.name}: ${val.price}\n`;
     });
@@ -401,7 +411,7 @@ bot.on("message:text", async (ctx) => {
       await ctx.reply("📭 Пока нет статистики");
       return;
     }
-    let text = "📊 *Статистика:*\n\n";
+    let text = " *Статистика:*\n\n";
     chats.forEach((chat: any) => {
       text += `• ${chat.title || chat.id} — ${chat.msg_count} сообщ.\n`;
     });
@@ -409,7 +419,6 @@ bot.on("message:text", async (ctx) => {
     return;
   }
 
-  // Команды выбора модели
   if (userMessage.startsWith("/")) {
     const cmd = userMessage.slice(1).toLowerCase();
     if (MODELS[cmd]) {
@@ -421,7 +430,6 @@ bot.on("message:text", async (ctx) => {
     }
   }
 
-  // /imagine
   if (userMessage.startsWith("/imagine")) {
     const prompt = userMessage.replace("/imagine", "").trim();
     if (!prompt) {
@@ -442,7 +450,7 @@ bot.on("message:text", async (ctx) => {
       }
     } catch (error: any) {
       console.error("Ошибка:", error.message);
-      await ctx.reply(`️ Ошибка: ${error.message}`);
+      await ctx.reply(`⚠️ Ошибка: ${error.message}`);
     }
     return;
   }
@@ -467,10 +475,10 @@ bot.on("message:text", async (ctx) => {
     addMessage(chatId, "user", userMessage);
     addMessage(chatId, "assistant", replyText);
 
-    await ctx.reply(replyText);
+    await sendLongMessage(ctx, replyText);
   } catch (error: any) {
     console.error("Ошибка:", error.message);
-    await ctx.reply("️ Ошибка. Попробуй ещё раз.");
+    await ctx.reply("⚠️ Ошибка. Попробуй ещё раз.");
   }
 });
 
@@ -479,8 +487,6 @@ bot.on("message:photo", async (ctx) => {
   if (!shouldReply(ctx)) return;
 
   const chatId = getThreadId(ctx);
-
-  // Создаём чат
   getChat(chatId, ctx.chat.type, ctx.chat.title || undefined);
 
   await ctx.replyWithChatAction("typing");
@@ -494,7 +500,7 @@ bot.on("message:photo", async (ctx) => {
       caption.toLowerCase().includes("улучши") ||
       caption.toLowerCase().includes("фотореализм")
     ) {
-      await ctx.reply(" Генерирую улучшенную версию...");
+      await ctx.reply("🎨 Генерирую улучшенную версию...");
 
       const describeResponse = await openai.chat.completions.create({
         model: "openai/gpt-4o-mini",
@@ -532,7 +538,8 @@ bot.on("message:photo", async (ctx) => {
         ],
       });
 
-      await ctx.reply(
+      await sendLongMessage(
+        ctx,
         response.choices[0]?.message?.content || "Не смог распознать.",
       );
     }
@@ -547,8 +554,6 @@ bot.on("message:voice", async (ctx) => {
   if (!shouldReply(ctx)) return;
 
   const chatId = getThreadId(ctx);
-
-  // Создаём чат
   getChat(chatId, ctx.chat.type, ctx.chat.title || undefined);
 
   await ctx.replyWithChatAction("typing");
@@ -574,7 +579,10 @@ bot.on("message:voice", async (ctx) => {
       ],
     });
 
-    await ctx.reply(response.choices[0]?.message?.content || "Не понял.");
+    await sendLongMessage(
+      ctx,
+      response.choices[0]?.message?.content || "Не понял.",
+    );
   } catch (error: any) {
     console.error("Ошибка с голосовым:", error.message);
     await ctx.reply("⚠️ Не смог распознать.");
