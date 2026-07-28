@@ -118,59 +118,86 @@ function shouldReply(ctx: any): boolean {
   return true;
 }
 
+// === МОДЕЛИ ===
 const MODELS: Record<
   string,
   { name: string; model: string; emoji: string; price: string }
 > = {
-  auto: {
-    name: "Авто",
-    model: "openrouter/auto",
-    emoji: "🚀",
-    price: "~$0.001",
+  auto: { name: "Авто", model: "openrouter/auto", emoji: "", price: "авто" },
+  free: {
+    name: "Бесплатная",
+    model: "google/gemma-2b-it:free",
+    emoji: "",
+    price: "бесплатно",
+  },
+  qwen3: {
+    name: "Qwen 3.7 Flash",
+    model: "qwen/qwen3.7-flash",
+    emoji: "🐉",
+    price: "$0.00003",
+  },
+  ultra: {
+    name: "Ультра-дешёвая",
+    model: "meta/llama-3.2-1b-instruct",
+    emoji: "💸",
+    price: "$0.00003",
   },
   cheap: {
     name: "Дешёвая",
-    model: "google/gemini-3.5-flash",
+    model: "qwen/qwen-2.5-7b-instruct",
     emoji: "💰",
-    price: "~$0.0003",
+    price: "$0.00004",
   },
   fast: {
     name: "Быстрая",
     model: "openai/gpt-4o-mini",
     emoji: "⚡",
-    price: "~$0.0005",
+    price: "$0.00015",
   },
   smart: {
     name: "Умная",
     model: "openai/gpt-4o",
     emoji: "🧠",
-    price: "~$0.003",
+    price: "$0.0025",
   },
   code: {
     name: "Для кода",
     model: "deepseek/deepseek-coder",
-    emoji: "💻",
-    price: "~$0.0007",
+    emoji: "",
+    price: "$0.0007",
   },
   creative: {
     name: "Креативная",
     model: "anthropic/claude-3.5-sonnet",
     emoji: "🎨",
-    price: "~$0.003",
+    price: "$0.003",
   },
 };
+
+// Бесплатные модели
+const FREE_MODELS = [
+  { name: "Google Gemma 2B", model: "google/gemma-2b-it:free" },
+  { name: "NVIDIA Nemotron Ultra", model: "nvidia/nemotron-3.5-ultra:free" },
+  { name: "Microsoft Phi-4", model: "microsoft/phi-4:free" },
+  { name: "Poolside Laguna S", model: "poolside/laguna-s-2.1:free" },
+  { name: "Poolside Laguna XS", model: "poolside/laguna-xs-2.1:free" },
+  { name: "Cohere North Mini Code", model: "cohere/north-mini-code:free" },
+  { name: "Gemma 4 26B", model: "google/gemma-4-26b-a4b:free" },
+  { name: "Gemma 4 31B", model: "google/gemma-4-31b:free" },
+  { name: "OpenAI GPT-OSS 20B", model: "openai/gpt-oss-20b:free" },
+];
 
 function getMainKeyboard() {
   return new Keyboard()
     .text("💬 Чат")
     .text("🖼 Фото")
-    .text("🎨 Imagine")
+    .text(" Imagine")
     .row()
     .text("🎤 Голос")
     .text("🤖 Модель")
     .text("📊 Статистика")
     .row()
-    .text(" Очистить")
+    .text("🗑 Очистить")
     .text("ℹ️ Помощь")
     .resized();
 }
@@ -266,7 +293,7 @@ bot.on("message:text", async (ctx) => {
       );
       return;
 
-    case "🖼 Фото":
+    case " Фото":
       await ctx.reply(
         "🖼 *Работа с фото*\n\n" +
           "Отправь фото с подписью:\n" +
@@ -298,10 +325,11 @@ bot.on("message:text", async (ctx) => {
       Object.entries(MODELS).forEach(([key, val]) => {
         text += `${val.emoji} /${key} — ${val.name} (${val.price})\n`;
       });
+      text += "\nИспользуй /freemodels для списка бесплатных";
       await ctx.reply(text, { parse_mode: "Markdown" });
       return;
 
-    case " Статистика": {
+    case "📊 Статистика": {
       const chats = db
         .prepare(
           "SELECT id, type, title, (SELECT COUNT(*) FROM messages WHERE chat_id = chats.id) as msg_count FROM chats ORDER BY msg_count DESC",
@@ -321,10 +349,10 @@ bot.on("message:text", async (ctx) => {
 
     case "🗑 Очистить":
       clearHistory(chatId);
-      await ctx.reply("🗑️ История очищена!");
+      await ctx.reply("️ История очищена!");
       return;
 
-    case "️ Помощь":
+    case "ℹ️ Помощь":
       await ctx.reply(
         "📚 *Помощь*\n\n" +
           "💬 Текст — помню контекст\n" +
@@ -335,6 +363,7 @@ bot.on("message:text", async (ctx) => {
           "Команды:\n" +
           "/imagine [описание]\n" +
           "/model — список моделей\n" +
+          "/freemodels — бесплатные модели\n" +
           "/current — текущая модель\n" +
           "/price — цены\n" +
           "/clear — очистить",
@@ -347,13 +376,13 @@ bot.on("message:text", async (ctx) => {
 
   if (userMessage === "/start" || userMessage === "/menu") {
     await ctx.reply(
-      " *Привет! Я умный бот с памятью!*\n\n" +
+      "🤖 *Привет! Я умный бот с памятью!*\n\n" +
         "💬 Текст + контекст\n" +
         "🖼️ Фото — анализирую и улучшаю\n" +
         "🎨 /imagine — генерирую картинки\n" +
         "🎤 Голосовые — распознаю\n" +
         "🤖 /model — выбор модели\n\n" +
-        "Используй кнопки внизу 👇",
+        "Используй кнопки внизу ",
       {
         parse_mode: "Markdown",
         reply_markup: getMainKeyboard(),
@@ -364,7 +393,7 @@ bot.on("message:text", async (ctx) => {
 
   if (userMessage === "/clear") {
     clearHistory(chatId);
-    await ctx.reply("🗑️ История очищена!");
+    await ctx.reply("️ История очищена!");
     return;
   }
 
@@ -380,6 +409,17 @@ bot.on("message:text", async (ctx) => {
     Object.entries(MODELS).forEach(([key, val]) => {
       text += `${val.emoji} /${key} — ${val.name} (${val.price})\n`;
     });
+    text += "\nИспользуй /freemodels для списка бесплатных";
+    await ctx.reply(text, { parse_mode: "Markdown" });
+    return;
+  }
+
+  if (userMessage === "/freemodels") {
+    let text = "🆓 *Бесплатные модели:*\n\n";
+    FREE_MODELS.forEach((m, i) => {
+      text += `${i + 1}. *${m.name}*\n   \`${m.model}\`\n\n`;
+    });
+    text += "Чтобы выбрать: скопируй ID и напиши /setmodel <id>";
     await ctx.reply(text, { parse_mode: "Markdown" });
     return;
   }
@@ -392,7 +432,7 @@ bot.on("message:text", async (ctx) => {
   }
 
   if (userMessage === "/price") {
-    let text = "💰 *Цены:*\n\n";
+    let text = "💰 *Цены моделей:*\n\n";
     Object.entries(MODELS).forEach(([key, val]) => {
       text += `${val.emoji} ${val.name}: ${val.price}\n`;
     });
@@ -411,7 +451,7 @@ bot.on("message:text", async (ctx) => {
       await ctx.reply("📭 Пока нет статистики");
       return;
     }
-    let text = " *Статистика:*\n\n";
+    let text = "📊 *Статистика:*\n\n";
     chats.forEach((chat: any) => {
       text += `• ${chat.title || chat.id} — ${chat.msg_count} сообщ.\n`;
     });
@@ -419,21 +459,36 @@ bot.on("message:text", async (ctx) => {
     return;
   }
 
+  // Команды выбора модели
   if (userMessage.startsWith("/")) {
     const cmd = userMessage.slice(1).toLowerCase();
     if (MODELS[cmd]) {
       setUserModel(userChatId, MODELS[cmd].model);
-      await ctx.reply(`${MODELS[cmd].emoji} Выбрана: ${MODELS[cmd].name}`, {
-        parse_mode: "Markdown",
-      });
+      await ctx.reply(
+        `${MODELS[cmd].emoji} Выбрана: ${MODELS[cmd].name}\n_Модель: ${MODELS[cmd].model}_`,
+        { parse_mode: "Markdown" },
+      );
       return;
+    }
+
+    // /setmodel <model_id>
+    if (cmd.startsWith("setmodel ")) {
+      const modelId = userMessage.split(" ").slice(1).join(" ").trim();
+      if (modelId) {
+        setUserModel(userChatId, modelId);
+        await ctx.reply(`✅ Установлена модель: \`${modelId}\``, {
+          parse_mode: "Markdown",
+        });
+        return;
+      }
     }
   }
 
+  // /imagine
   if (userMessage.startsWith("/imagine")) {
     const prompt = userMessage.replace("/imagine", "").trim();
     if (!prompt) {
-      await ctx.reply("🎨 Использование: /imagine [описание]");
+      await ctx.reply(" Использование: /imagine [описание]");
       return;
     }
     try {
@@ -450,7 +505,7 @@ bot.on("message:text", async (ctx) => {
       }
     } catch (error: any) {
       console.error("Ошибка:", error.message);
-      await ctx.reply(`⚠️ Ошибка: ${error.message}`);
+      await ctx.reply(`️ Ошибка: ${error.message}`);
     }
     return;
   }
