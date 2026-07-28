@@ -176,15 +176,33 @@ const MODELS: Record<
 
 // Бесплатные модели
 const FREE_MODELS = [
-  { name: "Google Gemma 2B", model: "google/gemma-2b-it:free" },
-  { name: "NVIDIA Nemotron Ultra", model: "nvidia/nemotron-3.5-ultra:free" },
-  { name: "Microsoft Phi-4", model: "microsoft/phi-4:free" },
-  { name: "Poolside Laguna S", model: "poolside/laguna-s-2.1:free" },
-  { name: "Poolside Laguna XS", model: "poolside/laguna-xs-2.1:free" },
+  { name: "Google Gemma 4 31B", model: "google/gemma-4-31b-it:free" },
+  { name: "Google Gemma 4 26B A4B", model: "google/gemma-4-26b-a4b-it:free" },
+  { name: "Google Gemma 4 3B", model: "google/gemma-4-3b-it:free" },
+  { name: "Google Gemma 3 12B", model: "google/gemma-3-12b-it:free" },
+  { name: "Google Gemma 3 4B", model: "google/gemma-3-4b-it:free" },
+  { name: "NVIDIA Nemotron 3 Ultra", model: "nvidia/nemotron-3-ultra:free" },
+  { name: "NVIDIA Nemotron 3 Super", model: "nvidia/nemotron-3-super:free" },
+  {
+    name: "NVIDIA Nemotron 3 Nano 30B",
+    model: "nvidia/nemotron-3-nano-30b-a3b:free",
+  },
+  {
+    name: "NVIDIA Nemotron 3 Nano Omni",
+    model: "nvidia/nemotron-3-nano-omni:free",
+  },
+  {
+    name: "NVIDIA Nemotron Nano 12B",
+    model: "nvidia/nemotron-nano-12b-2-vl:free",
+  },
+  { name: "NVIDIA Nemotron Nano 9B", model: "nvidia/nemotron-nano-9b-v2:free" },
+  { name: "Poolside Laguna S 2.1", model: "poolside/laguna-s-2.1:free" },
+  { name: "Poolside Laguna XS 2.1", model: "poolside/laguna-xs-2.1:free" },
+  { name: "Poolside Laguna M 1", model: "poolside/laguna-m-1:free" },
   { name: "Cohere North Mini Code", model: "cohere/north-mini-code:free" },
-  { name: "Gemma 4 26B", model: "google/gemma-4-26b-a4b:free" },
-  { name: "Gemma 4 31B", model: "google/gemma-4-31b:free" },
   { name: "OpenAI GPT-OSS 20B", model: "openai/gpt-oss-20b:free" },
+  { name: "OpenAI GPT-OSS 120B", model: "openai/gpt-oss-120b:free" },
+  { name: "Ling 3.0 Flash", model: "ling-ai/ling-3.0-flash:free" },
 ];
 
 function getMainKeyboard() {
