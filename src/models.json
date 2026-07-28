@@ -10,13 +10,13 @@
       "name": "Qwen 3.7 Flash",
       "model": "qwen/qwen3.7-flash",
       "emoji": "🐉",
-      "price": "$0.00003"
+      "price": "$0.03"
     },
     "ultra": {
       "name": "Ультра-дешёвая",
-      "model": "meta/llama-3.2-1b-instruct",
+      "model": "openai/gpt-oss-120b",
       "emoji": "",
-      "price": "$0.00003"
+      "price": "$0.03"
     },
     "cheap": {
       "name": "Дешёвая",
@@ -28,13 +28,13 @@
       "name": "Быстрая",
       "model": "openai/gpt-4o-mini",
       "emoji": "",
-      "price": "$0.00015"
+      "price": "$0.15"
     },
     "smart": {
       "name": "Умная",
       "model": "openai/gpt-4o",
       "emoji": "🧠",
-      "price": "$0.0025"
+      "price": "$2.5"
     },
     "code": {
       "name": "Для кода",
@@ -93,7 +93,6 @@
       "model": "cohere/north-mini-code:free"
     },
     { "name": "OpenAI GPT-OSS 20B", "model": "openai/gpt-oss-20b:free" },
-    { "name": "OpenAI GPT-OSS 120B", "model": "openai/gpt-oss-120b" },
     { "name": "Ling 3.0 Flash", "model": "ling-ai/ling-3.0-flash:free" }
   ]
 }
