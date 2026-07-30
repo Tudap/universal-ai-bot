@@ -1,7 +1,14 @@
 import { Bot, InputFile, Keyboard, InlineKeyboard } from "grammy";
 import { OpenAI } from "openai";
 import "dotenv/config";
-import { getChat, addMessage, getHistory, clearHistory, getUserModel, setUserModel } from "./db.js";
+import {
+  getChat,
+  addMessage,
+  getHistory,
+  clearHistory,
+  getUserModel,
+  setUserModel,
+} from "./db.js";
 import fetch from "node-fetch";
 import db from "./db.js";
 import express, { Request, Response } from "express";
@@ -21,17 +28,20 @@ const allowedUsers = process.env.ALLOWED_USERS
   ? process.env.ALLOWED_USERS.split(",").map((id) => id.trim())
   : [];
 
-const MODELS: Record<string, { name: string; model: string; emoji: string; price: string }> = modelsData.paid;
+const MODELS: Record<
+  string,
+  { name: string; model: string; emoji: string; price: string }
+> = modelsData.paid;
 const FREE_MODELS: Array<{ name: string; model: string }> = modelsData.free;
 
 // Whitelist — только для личных чатов
 bot.use(async (ctx, next) => {
   if (!ctx.chat) return next();
-  
+
   if (ctx.chat.type === "group" || ctx.chat.type === "supergroup") {
     return next();
   }
-  
+
   if (allowedUsers.length === 0) return next();
   const userId = ctx.from?.id.toString();
   if (!userId || !allowedUsers.includes(userId)) {
@@ -52,7 +62,8 @@ app.get("/health", (_req: Request, res: Response) => {
   res.json({ status: "healthy" });
 });
 
-const SYSTEM_PROMPT = "Ты — универсальный ИИ-ассистент. Отвечай четко, по делу и на языке пользователя.";
+const SYSTEM_PROMPT =
+  "Ты — универсальный ИИ-ассистент. Отвечай четко, по делу и на языке пользователя.";
 
 function getThreadId(ctx: any): string {
   const chatId = ctx.chat.id.toString();
@@ -63,15 +74,15 @@ function getThreadId(ctx: any): string {
 // === ФУНКЦИЯ ДЛЯ ДЛИННЫХ СООБЩЕНИЙ ===
 async function sendLongMessage(ctx: any, text: string) {
   const MAX_LENGTH = 4000;
-  
+
   if (text.length <= MAX_LENGTH) {
     await ctx.reply(text);
     return;
   }
-  
+
   const parts: string[] = [];
   let currentPart = "";
-  
+
   for (const line of text.split("\n")) {
     if ((currentPart + "\n" + line).length > MAX_LENGTH) {
       parts.push(currentPart);
@@ -80,55 +91,53 @@ async function sendLongMessage(ctx: any, text: string) {
       currentPart += (currentPart ? "\n" : "") + line;
     }
   }
-  
+
   if (currentPart) {
     parts.push(currentPart);
   }
-  
+
   for (const part of parts) {
     await ctx.reply(part);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 }
 
 // === ПРОВЕРКА: нужно ли отвечать в группе ===
 function shouldReply(ctx: any): boolean {
   if (!ctx.chat) return false;
-  
+
   const chatType = ctx.chat.type;
   const text = ctx.message?.text || ctx.message?.caption || "";
-  
+
   if (chatType === "private") return true;
-  
+
   if (chatType === "group" || chatType === "supergroup") {
     if (text.startsWith("/")) return true;
-    
+
     const botUsername = ctx.me?.username || "parf_universal_ai_bot";
     if (text.includes(`@${botUsername}`)) return true;
-    
+
     if (ctx.message?.reply_to_message?.from?.is_bot) return true;
-    
+
     return false;
   }
-  
+
   return true;
 }
 
 // === Извлечение команды из текста (убирает @username) ===
 function extractCommand(text: string): string {
   if (!text.startsWith("/")) return "";
-  
+
   let cmd = text.slice(1).toLowerCase();
-  
-  // Убираем @username если есть
-  const atIndex = cmd.indexOf('@');
+
+  const atIndex = cmd.indexOf("@");
   if (atIndex !== -1) {
     cmd = cmd.substring(0, atIndex);
   }
-  
-  // Берём только первое слово (до пробела)
-  cmd = cmd.split(' ')[0].trim();
-  
+
+  cmd = cmd.split(" ")[0].trim();
+
   return cmd;
 }
 
@@ -142,45 +151,48 @@ function getMainKeyboard() {
     .text("🤖 Модель")
     .text("📊 Статистика")
     .row()
-    .text(" Очистить")
+    .text("🗑 Очистить")
     .text("ℹ️ Помощь")
     .resized();
 }
 
 function getFreeModelsKeyboard() {
   const keyboard = new InlineKeyboard();
-  
+
   FREE_MODELS.forEach((m, i) => {
     keyboard.text(`${i + 1}. ${m.name}`, `setmodel_${m.model}`);
     keyboard.row();
   });
-  
-  keyboard.text(" Назад", "menu_back");
+
+  keyboard.text("🔙 Назад", "menu_back");
   return keyboard;
 }
 
 async function generateImage(prompt: string): Promise<string | null> {
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "https://github.com/your-repo",
+  const response = await fetch(
+    "https://openrouter.ai/api/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://github.com/your-repo",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3.1-flash-lite-image",
+        messages: [{ role: "user", content: prompt }],
+      }),
     },
-    body: JSON.stringify({
-      model: "google/gemini-3.1-flash-lite-image",
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
+  );
 
   const data: any = await response.json();
-  
+
   if (data.choices?.[0]?.message?.images) {
     for (const img of data.choices[0].message.images) {
       if (img.image_url?.url) return img.image_url.url;
     }
   }
-  
+
   if (data.choices?.[0]?.message?.content) {
     const content = data.choices[0].message.content;
     if (typeof content === "string") {
@@ -190,26 +202,29 @@ async function generateImage(prompt: string): Promise<string | null> {
       return content;
     }
   }
-  
+
   return null;
 }
 
-async function sendGeneratedImage(ctx: any, imageResult: string): Promise<boolean> {
+async function sendGeneratedImage(
+  ctx: any,
+  imageResult: string,
+): Promise<boolean> {
   try {
     await ctx.replyWithChatAction("upload_photo");
     let buffer: Buffer;
-    
+
     if (imageResult.startsWith("http")) {
       const imgResponse = await fetch(imageResult);
       buffer = Buffer.from(await imgResponse.arrayBuffer());
     } else if (imageResult.startsWith("data:image")) {
-      const base64Data = imageResult.replace(/^data:image\/\w+;base64,/, '');
-      buffer = Buffer.from(base64Data, 'base64');
+      const base64Data = imageResult.replace(/^data:image\/\w+;base64,/, "");
+      buffer = Buffer.from(base64Data, "base64");
     } else {
       await ctx.reply(imageResult);
       return false;
     }
-    
+
     const file = new InputFile(buffer, "generated.png");
     await ctx.replyWithPhoto(file);
     return true;
@@ -225,25 +240,27 @@ bot.on("callback_query:data", async (ctx) => {
   try {
     const data = ctx.callbackQuery.data;
     const userChatId = ctx.chat?.id.toString() || "";
-    
+
     if (data.startsWith("setmodel_")) {
       const modelId = data.replace("setmodel_", "");
       setUserModel(userChatId, modelId);
-      
+
       await ctx.answerCallbackQuery({ text: `✅ Модель установлена!` });
       await ctx.editMessageText(
         `✅ Выбрана модель: \`${modelId}\`\n\nТеперь все сообщения будут обрабатываться этой моделью.`,
-        { parse_mode: "Markdown" }
+        { parse_mode: "Markdown" },
       );
     }
-    
+
     if (data === "menu_back") {
-      await ctx.editMessageText("🆓 *Бесплатные модели*\n\nНажми на кнопку чтобы выбрать:", {
-        parse_mode: "Markdown",
-        reply_markup: getFreeModelsKeyboard()
-      });
+      await ctx.editMessageText(
+        "🆓 *Бесплатные модели*\n\nНажми на кнопку чтобы выбрать:",
+        {
+          parse_mode: "Markdown",
+          reply_markup: getFreeModelsKeyboard(),
+        },
+      );
     }
-    
   } catch (error: any) {
     console.error("Callback ошибка:", error.message);
   }
@@ -252,54 +269,53 @@ bot.on("callback_query:data", async (ctx) => {
 // Обработчик текста
 bot.on("message:text", async (ctx) => {
   if (!shouldReply(ctx)) return;
-  
+
   const chatId = getThreadId(ctx);
   const userChatId = ctx.chat?.id.toString() || "";
-  
+
   getChat(chatId, ctx.chat.type, ctx.chat.title || undefined);
-  
+
   await ctx.replyWithChatAction("typing");
-  
+
   const userMessage = ctx.message.text;
 
   // === ОБРАБОТКА КНОПОК МЕНЮ ===
   switch (userMessage) {
     case "💬 Чат":
       await ctx.reply(
-        " *Режим чата*\n\n" +
-        "Просто пиши текст — я отвечу и запомню контекст.\n\n" +
-        `Текущая модель: \`${getUserModel(userChatId)}\``,
-        { parse_mode: "Markdown" }
+        "💬 *Режим чата*\n\n" +
+          "Просто пиши текст — я отвечу и запомню контекст.\n\n" +
+          `Текущая модель: \`${getUserModel(userChatId)}\``,
+        { parse_mode: "Markdown" },
       );
       return;
-      
+
     case "🖼 Фото":
       await ctx.reply(
         "🖼 *Работа с фото*\n\n" +
-        "Отправь фото с подписью:\n" +
-        "• 'Что на фото?' — опишу\n" +
-        "• 'Улучши' — создам фотореалистичную версию",
-        { parse_mode: "Markdown" }
+          "Отправь фото с подписью:\n" +
+          "• 'Что на фото?' — опишу\n" +
+          "• 'Улучши' — создам фотореалистичную версию",
+        { parse_mode: "Markdown" },
       );
       return;
-      
+
     case "🎨 Imagine":
       await ctx.reply(
-        "🎨 *Генерация картинок*\n\n" +
-        "Напиши: `/imagine [описание]`\n\n" +
-        "Пример: `/imagine кот в космосе`",
-        { parse_mode: "Markdown" }
+        " *Генерация картинок*\n\n" +
+          "Напиши: `/imagine [описание]`\n\n" +
+          "Пример: `/imagine кот в космосе`",
+        { parse_mode: "Markdown" },
       );
       return;
-      
-    case "🎤 Голос":
+
+    case " Голос":
       await ctx.reply(
-        " *Голосовые*\n\n" +
-        "Отправь голосовое — я распознаю и отвечу.",
-        { parse_mode: "Markdown" }
+        "🎤 *Голосовые*\n\n" + "Отправь голосовое — я распознаю и отвечу.",
+        { parse_mode: "Markdown" },
       );
       return;
-      
+
     case "🤖 Модель":
       const current = getUserModel(userChatId);
       let text = "🤖 *Выбор модели*\n\nТекущая: `" + current + "`\n\n";
@@ -309,62 +325,70 @@ bot.on("message:text", async (ctx) => {
       text += "\nИспользуй /freemodels для списка бесплатных";
       await ctx.reply(text, { parse_mode: "Markdown" });
       return;
-      
+
     case "📊 Статистика": {
-      const chats = db.prepare("SELECT id, type, title, (SELECT COUNT(*) FROM messages WHERE chat_id = chats.id) as msg_count FROM chats ORDER BY msg_count DESC").all();
+      const chats = db
+        .prepare(
+          "SELECT id, type, title, (SELECT COUNT(*) FROM messages WHERE chat_id = chats.id) as msg_count FROM chats ORDER BY msg_count DESC",
+        )
+        .all();
       if (chats.length === 0) {
-        await ctx.reply(" Пока нет статистики");
+        await ctx.reply("📭 Пока нет статистики");
         return;
       }
-      let text = "📊 *Статистика:*\n\n";
+      let text = " *Статистика:*\n\n";
       chats.forEach((chat: any) => {
         text += `• ${chat.title || chat.id} — ${chat.msg_count} сообщ.\n`;
       });
       await ctx.reply(text, { parse_mode: "Markdown" });
       return;
     }
-      
+
     case "🗑 Очистить":
       clearHistory(chatId);
       await ctx.reply("🗑️ История очищена!");
       return;
-      
+
     case "ℹ️ Помощь":
       await ctx.reply(
-        "📚 *Помощь*\n\n" +
-        " Текст — помню контекст\n" +
-        "🖼 Фото — анализирую и улучшаю\n" +
-        "🎨 /imagine — генерирую картинки\n" +
-        "🎤 Голосовые — распознаю\n" +
-        "🤖 /model — выбор модели\n\n" +
-        "Команды:\n" +
-        "/imagine [описание]\n" +
-        "/model — список моделей\n" +
-        "/freemodels — бесплатные модели\n" +
-        "/current — текущая модель\n" +
-        "/price — цены\n" +
-        "/clear — очистить",
-        { parse_mode: "Markdown" }
+        " *Помощь*\n\n" +
+          "💬 Текст — помню контекст\n" +
+          "🖼 Фото — анализирую и улучшаю\n" +
+          " /imagine — генерирую картинки\n" +
+          "🎤 Голосовые — распознаю\n" +
+          "🤖 /model — выбор модели\n\n" +
+          "Команды:\n" +
+          "/imagine [описание]\n" +
+          "/model — список моделей\n" +
+          "/freemodels — бесплатные модели\n" +
+          "/current — текущая модель\n" +
+          "/price — цены\n" +
+          "/clear — очистить",
+        { parse_mode: "Markdown" },
       );
       return;
   }
 
   // === КОМАНДЫ ===
-  
-  if (userMessage === "/start" || userMessage === "/menu" || 
-      userMessage.startsWith("/start@") || userMessage.startsWith("/menu@")) {
+
+  if (
+    userMessage === "/start" ||
+    userMessage === "/menu" ||
+    userMessage.startsWith("/start@") ||
+    userMessage.startsWith("/menu@")
+  ) {
     await ctx.reply(
       "🤖 *Привет! Я умный бот с памятью!*\n\n" +
-      "💬 Текст + контекст\n" +
-      "🖼️ Фото — анализирую и улучшаю\n" +
-      "🎨 /imagine — генерирую картинки\n" +
-      "🎤 Голосовые — распознаю\n" +
-      "🤖 /model — выбор модели\n\n" +
-      "Используй кнопки внизу 👇",
-      { 
+        "💬 Текст + контекст\n" +
+        "🖼️ Фото — анализирую и улучшаю\n" +
+        "🎨 /imagine — генерирую картинки\n" +
+        "🎤 Голосовые — распознаю\n" +
+        "🤖 /model — выбор модели\n\n" +
+        "Используй кнопки внизу 👇",
+      {
         parse_mode: "Markdown",
         reply_markup: getMainKeyboard(),
-      }
+      },
     );
     return;
   }
@@ -395,16 +419,18 @@ bot.on("message:text", async (ctx) => {
   if (userMessage === "/freemodels" || userMessage.startsWith("/freemodels@")) {
     await ctx.reply(
       "🆓 *Бесплатные модели*\n\nНажми на кнопку чтобы выбрать:",
-      { 
+      {
         parse_mode: "Markdown",
-        reply_markup: getFreeModelsKeyboard()
-      }
+        reply_markup: getFreeModelsKeyboard(),
+      },
     );
     return;
   }
 
   if (userMessage === "/current" || userMessage.startsWith("/current@")) {
-    await ctx.reply(`📊 Текущая модель: \`${getUserModel(userChatId)}\``, { parse_mode: "Markdown" });
+    await ctx.reply(`📊 Текущая модель: \`${getUserModel(userChatId)}\``, {
+      parse_mode: "Markdown",
+    });
     return;
   }
 
@@ -419,7 +445,11 @@ bot.on("message:text", async (ctx) => {
   }
 
   if (userMessage === "/stats" || userMessage.startsWith("/stats@")) {
-    const chats = db.prepare("SELECT id, type, title, (SELECT COUNT(*) FROM messages WHERE chat_id = chats.id) as msg_count FROM chats ORDER BY msg_count DESC").all();
+    const chats = db
+      .prepare(
+        "SELECT id, type, title, (SELECT COUNT(*) FROM messages WHERE chat_id = chats.id) as msg_count FROM chats ORDER BY msg_count DESC",
+      )
+      .all();
     if (chats.length === 0) {
       await ctx.reply(" Пока нет статистики");
       return;
@@ -435,23 +465,28 @@ bot.on("message:text", async (ctx) => {
   // === ОБЩАЯ ОБРАБОТКА ВСЕХ КОМАНД С @username ===
   if (userMessage.startsWith("/")) {
     const cmd = extractCommand(userMessage);
-    
+
     if (MODELS[cmd]) {
       setUserModel(userChatId, MODELS[cmd].model);
-      await ctx.reply(`${MODELS[cmd].emoji} Выбрана: ${MODELS[cmd].name}\n_Модель: ${MODELS[cmd].model}_`, { parse_mode: "Markdown" });
+      await ctx.reply(
+        `${MODELS[cmd].emoji} Выбрана: ${MODELS[cmd].name}\n_Модель: ${MODELS[cmd].model}_`,
+        { parse_mode: "Markdown" },
+      );
       return;
     }
-    
+
     if (cmd === "setmodel") {
-      const parts = userMessage.split(' ');
+      const parts = userMessage.split(" ");
       if (parts.length > 1) {
-        const modelId = parts.slice(1).join(' ').trim();
+        const modelId = parts.slice(1).join(" ").trim();
         setUserModel(userChatId, modelId);
-        await ctx.reply(`✅ Установлена модель: \`${modelId}\``, { parse_mode: "Markdown" });
+        await ctx.reply(`✅ Установлена модель: \`${modelId}\``, {
+          parse_mode: "Markdown",
+        });
         return;
       }
     }
-    
+
     // /imagine с @username
     if (cmd === "imagine") {
       const prompt = userMessage.replace(/\/imagine(@\w+)?\s*/i, "").trim();
@@ -479,15 +514,53 @@ bot.on("message:text", async (ctx) => {
     }
   }
 
-  // Обычный чат
+  // === ОБЫЧНЫЙ ЧАТ ===
   try {
     const model = getUserModel(userChatId);
-    const history = getHistory(chatId, 10);
-    const messages = [
-      { role: "system", content: SYSTEM_PROMPT },
-      ...history.map((msg: any) => ({ role: msg.role, content: msg.content })),
-      { role: "user", content: userMessage },
-    ];
+    const isGroup = ctx.chat.type === "group" || ctx.chat.type === "supergroup";
+
+    // Базовый системный промпт
+    let systemContent = SYSTEM_PROMPT;
+    if (isGroup) {
+      systemContent +=
+        "\n\nТы в групповом чате. Отвечай кратко и только на текущий вопрос. Если пользователь ответил (reply) на твоё предыдущее сообщение, учитывай этот контекст.";
+    }
+
+    let messages: any[] = [{ role: "system", content: systemContent }];
+
+    if (isGroup) {
+      // УМНЫЙ КОНТЕКСТ ДЛЯ ГРУПП: берём только сообщение, на которое ответил пользователь
+      const replyMsg = ctx.message.reply_to_message;
+
+      if (
+        replyMsg &&
+        replyMsg.from?.is_bot &&
+        replyMsg.from.username === ctx.me?.username
+      ) {
+        // Пользователь ответил именно на сообщение нашего бота
+        messages.push({
+          role: "assistant",
+          content: replyMsg.text || replyMsg.caption || "[Медиа сообщение]",
+        });
+      }
+
+      // Добавляем текущий вопрос пользователя
+      messages.push({ role: "user", content: userMessage });
+    } else {
+      // ЛИЧНЫЕ ЧАТЫ: полная история
+      const history = getHistory(chatId, 10);
+      messages = [
+        { role: "system", content: SYSTEM_PROMPT },
+        ...history.map((msg: any) => ({
+          role: msg.role,
+          content: msg.content,
+        })),
+        { role: "user", content: userMessage },
+      ];
+
+      // Сохраняем в базу только для личных чатов
+      addMessage(chatId, "user", userMessage);
+    }
 
     const response = await openai.chat.completions.create({
       model: model,
@@ -495,72 +568,80 @@ bot.on("message:text", async (ctx) => {
     });
 
     const replyText = response.choices[0]?.message?.content || "Пустой ответ.";
-    
-    addMessage(chatId, "user", userMessage);
-    addMessage(chatId, "assistant", replyText);
+
+    // Сохраняем ответ бота только для личных чатов
+    if (!isGroup) {
+      addMessage(chatId, "assistant", replyText);
+    }
 
     await sendLongMessage(ctx, replyText);
-
   } catch (error: any) {
     console.error("Ошибка:", error.message);
-    await ctx.reply("⚠️ Ошибка. Попробуй ещё раз.");
+    await ctx.reply("️ Ошибка. Попробуй ещё раз.");
   }
 });
 
 // Фото
 bot.on("message:photo", async (ctx) => {
   if (!shouldReply(ctx)) return;
-  
+
   const chatId = getThreadId(ctx);
   getChat(chatId, ctx.chat.type, ctx.chat.title || undefined);
-  
+
   await ctx.replyWithChatAction("typing");
-  
+
   try {
     const file = await ctx.getFile();
     const fileUrl = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
     const caption = ctx.message.caption || "";
-    
-    if (caption.toLowerCase().includes("улучши") || 
-        caption.toLowerCase().includes("фотореализм")) {
-      
+
+    if (
+      caption.toLowerCase().includes("улучши") ||
+      caption.toLowerCase().includes("фотореализм")
+    ) {
       await ctx.reply("🎨 Генерирую улучшенную версию...");
-      
+
       const describeResponse = await openai.chat.completions.create({
         model: "openai/gpt-4o-mini",
-        messages: [{
-          role: "user",
-          content: [
-            { type: "text", text: "Опиши что на изображении" },
-            { type: "image_url", image_url: { url: fileUrl } },
-          ],
-        }],
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: "Опиши что на изображении" },
+              { type: "image_url", image_url: { url: fileUrl } },
+            ],
+          },
+        ],
       });
-      
-      const description = describeResponse.choices[0]?.message?.content || caption;
+
+      const description =
+        describeResponse.choices[0]?.message?.content || caption;
       const result = await generateImage(`Photorealistic: ${description}`);
-      
+
       if (result) {
         await sendGeneratedImage(ctx, result);
       } else {
         await ctx.reply("❌ Не удалось");
       }
-      
     } else {
       const response = await openai.chat.completions.create({
         model: "openai/gpt-4o-mini",
-        messages: [{
-          role: "user",
-          content: [
-            { type: "text", text: caption || "Что на фото?" },
-            { type: "image_url", image_url: { url: fileUrl } },
-          ],
-        }],
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: caption || "Что на фото?" },
+              { type: "image_url", image_url: { url: fileUrl } },
+            ],
+          },
+        ],
       });
-      
-      await sendLongMessage(ctx, response.choices[0]?.message?.content || "Не смог распознать.");
+
+      await sendLongMessage(
+        ctx,
+        response.choices[0]?.message?.content || "Не смог распознать.",
+      );
     }
-    
   } catch (error: any) {
     console.error("Ошибка с фото:", error.message);
     await ctx.reply("⚠️ Не смог обработать.");
@@ -570,25 +651,25 @@ bot.on("message:photo", async (ctx) => {
 // Голосовые
 bot.on("message:voice", async (ctx) => {
   if (!shouldReply(ctx)) return;
-  
+
   const chatId = getThreadId(ctx);
   getChat(chatId, ctx.chat.type, ctx.chat.title || undefined);
-  
+
   await ctx.replyWithChatAction("typing");
-  
+
   try {
     const file = await ctx.getFile();
     const fileUrl = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
-    
+
     const audioResponse = await fetch(fileUrl);
     const audioBuffer = await audioResponse.arrayBuffer();
-    
+
     const transcription = await openai.audio.transcriptions.create({
       model: "whisper-1",
       file: new File([audioBuffer], "voice.ogg", { type: "audio/ogg" }),
       language: "ru",
     });
-    
+
     const response = await openai.chat.completions.create({
       model: getUserModel(ctx.chat.id.toString()),
       messages: [
@@ -596,12 +677,14 @@ bot.on("message:voice", async (ctx) => {
         { role: "user", content: transcription.text },
       ],
     });
-    
-    await sendLongMessage(ctx, response.choices[0]?.message?.content || "Не понял.");
-    
+
+    await sendLongMessage(
+      ctx,
+      response.choices[0]?.message?.content || "Не понял.",
+    );
   } catch (error: any) {
     console.error("Ошибка с голосовым:", error.message);
-    await ctx.reply("⚠️ Не смог распознать.");
+    await ctx.reply("️ Не смог распознать.");
   }
 });
 
