@@ -144,12 +144,12 @@ function extractCommand(text: string): string {
 function getMainKeyboard() {
   return new Keyboard()
     .text("💬 Чат")
-    .text("🖼 Фото")
+    .text(" Фото")
     .text("🎨 Imagine")
     .row()
     .text("🎤 Голос")
     .text("🤖 Модель")
-    .text("📊 Статистика")
+    .text(" Статистика")
     .row()
     .text("🗑 Очистить")
     .text("ℹ️ Помощь")
@@ -254,7 +254,7 @@ bot.on("callback_query:data", async (ctx) => {
 
     if (data === "menu_back") {
       await ctx.editMessageText(
-        "🆓 *Бесплатные модели*\n\nНажми на кнопку чтобы выбрать:",
+        " *Бесплатные модели*\n\nНажми на кнопку чтобы выбрать:",
         {
           parse_mode: "Markdown",
           reply_markup: getFreeModelsKeyboard(),
@@ -292,7 +292,7 @@ bot.on("message:text", async (ctx) => {
 
     case "🖼 Фото":
       await ctx.reply(
-        "🖼 *Работа с фото*\n\n" +
+        " *Работа с фото*\n\n" +
           "Отправь фото с подписью:\n" +
           "• 'Что на фото?' — опишу\n" +
           "• 'Улучши' — создам фотореалистичную версию",
@@ -302,21 +302,21 @@ bot.on("message:text", async (ctx) => {
 
     case "🎨 Imagine":
       await ctx.reply(
-        " *Генерация картинок*\n\n" +
+        "🎨 *Генерация картинок*\n\n" +
           "Напиши: `/imagine [описание]`\n\n" +
           "Пример: `/imagine кот в космосе`",
         { parse_mode: "Markdown" },
       );
       return;
 
-    case " Голос":
+    case "🎤 Голос":
       await ctx.reply(
         "🎤 *Голосовые*\n\n" + "Отправь голосовое — я распознаю и отвечу.",
         { parse_mode: "Markdown" },
       );
       return;
 
-    case "🤖 Модель":
+    case " Модель":
       const current = getUserModel(userChatId);
       let text = "🤖 *Выбор модели*\n\nТекущая: `" + current + "`\n\n";
       Object.entries(MODELS).forEach(([key, val]) => {
@@ -336,7 +336,7 @@ bot.on("message:text", async (ctx) => {
         await ctx.reply("📭 Пока нет статистики");
         return;
       }
-      let text = " *Статистика:*\n\n";
+      let text = "📊 *Статистика:*\n\n";
       chats.forEach((chat: any) => {
         text += `• ${chat.title || chat.id} — ${chat.msg_count} сообщ.\n`;
       });
@@ -351,12 +351,12 @@ bot.on("message:text", async (ctx) => {
 
     case "ℹ️ Помощь":
       await ctx.reply(
-        " *Помощь*\n\n" +
+        "📚 *Помощь*\n\n" +
           "💬 Текст — помню контекст\n" +
           "🖼 Фото — анализирую и улучшаю\n" +
-          " /imagine — генерирую картинки\n" +
+          "🎨 /imagine — генерирую картинки\n" +
           "🎤 Голосовые — распознаю\n" +
-          "🤖 /model — выбор модели\n\n" +
+          " /model — выбор модели\n\n" +
           "Команды:\n" +
           "/imagine [описание]\n" +
           "/model — список моделей\n" +
@@ -381,7 +381,7 @@ bot.on("message:text", async (ctx) => {
       "🤖 *Привет! Я умный бот с памятью!*\n\n" +
         "💬 Текст + контекст\n" +
         "🖼️ Фото — анализирую и улучшаю\n" +
-        "🎨 /imagine — генерирую картинки\n" +
+        " /imagine — генерирую картинки\n" +
         "🎤 Голосовые — распознаю\n" +
         "🤖 /model — выбор модели\n\n" +
         "Используй кнопки внизу 👇",
@@ -407,7 +407,7 @@ bot.on("message:text", async (ctx) => {
 
   if (userMessage === "/model" || userMessage.startsWith("/model@")) {
     const current = getUserModel(userChatId);
-    let text = "🤖 *Выбор модели*\n\nТекущая: `" + current + "`\n\n";
+    let text = " *Выбор модели*\n\nТекущая: `" + current + "`\n\n";
     Object.entries(MODELS).forEach(([key, val]) => {
       text += `${val.emoji} /${key} — ${val.name} (${val.price})\n`;
     });
@@ -451,10 +451,10 @@ bot.on("message:text", async (ctx) => {
       )
       .all();
     if (chats.length === 0) {
-      await ctx.reply(" Пока нет статистики");
+      await ctx.reply("📭 Пока нет статистики");
       return;
     }
-    let text = "📊 *Статистика:*\n\n";
+    let text = " *Статистика:*\n\n";
     chats.forEach((chat: any) => {
       text += `• ${chat.title || chat.id} — ${chat.msg_count} сообщ.\n`;
     });
@@ -523,25 +523,36 @@ bot.on("message:text", async (ctx) => {
     let systemContent = SYSTEM_PROMPT;
     if (isGroup) {
       systemContent +=
-        "\n\nТы в групповом чате. Отвечай кратко и только на текущий вопрос. Если пользователь ответил (reply) на твоё предыдущее сообщение, учитывай этот контекст.";
+        "\n\nТы в групповом чате. Отвечай кратко и только на текущий вопрос. Если пользователь ответил (reply) на чьё-то сообщение — учитывай этот контекст.";
     }
 
     let messages: any[] = [{ role: "system", content: systemContent }];
 
     if (isGroup) {
-      // УМНЫЙ КОНТЕКСТ ДЛЯ ГРУПП: берём только сообщение, на которое ответил пользователь
+      // УМНЫЙ КОНТЕКСТ ДЛЯ ГРУПП
       const replyMsg = ctx.message.reply_to_message;
 
-      if (
-        replyMsg &&
-        replyMsg.from?.is_bot &&
-        replyMsg.from.username === ctx.me?.username
-      ) {
-        // Пользователь ответил именно на сообщение нашего бота
-        messages.push({
-          role: "assistant",
-          content: replyMsg.text || replyMsg.caption || "[Медиа сообщение]",
-        });
+      if (replyMsg) {
+        // Определяем кто автор reply
+        const replyAuthor =
+          replyMsg.from?.username || replyMsg.from?.first_name || "Кто-то";
+        const replyText =
+          replyMsg.text || replyMsg.caption || "[Медиа сообщение]";
+
+        // Проверяем, это наш бот или другой человек
+        const isBotReply =
+          replyMsg.from?.is_bot && replyMsg.from.username === ctx.me?.username;
+
+        if (isBotReply) {
+          // Reply на бота → добавляем как assistant
+          messages.push({ role: "assistant", content: replyText });
+        } else {
+          // Reply на человека → добавляем как user с именем
+          messages.push({
+            role: "user",
+            content: `[${replyAuthor}]: ${replyText}`,
+          });
+        }
       }
 
       // Добавляем текущий вопрос пользователя
@@ -558,7 +569,6 @@ bot.on("message:text", async (ctx) => {
         { role: "user", content: userMessage },
       ];
 
-      // Сохраняем в базу только для личных чатов
       addMessage(chatId, "user", userMessage);
     }
 
@@ -569,7 +579,6 @@ bot.on("message:text", async (ctx) => {
 
     const replyText = response.choices[0]?.message?.content || "Пустой ответ.";
 
-    // Сохраняем ответ бота только для личных чатов
     if (!isGroup) {
       addMessage(chatId, "assistant", replyText);
     }
@@ -577,7 +586,7 @@ bot.on("message:text", async (ctx) => {
     await sendLongMessage(ctx, replyText);
   } catch (error: any) {
     console.error("Ошибка:", error.message);
-    await ctx.reply("️ Ошибка. Попробуй ещё раз.");
+    await ctx.reply("⚠️ Ошибка. Попробуй ещё раз.");
   }
 });
 
@@ -684,7 +693,7 @@ bot.on("message:voice", async (ctx) => {
     );
   } catch (error: any) {
     console.error("Ошибка с голосовым:", error.message);
-    await ctx.reply("️ Не смог распознать.");
+    await ctx.reply("⚠️ Не смог распознать.");
   }
 });
 
