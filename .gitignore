@@ -2,4 +2,7 @@ node_modules/
 .env
 bot.db
 *.db
+*.db-wal
+*.db-shm
+dist/
 .DS_Store
