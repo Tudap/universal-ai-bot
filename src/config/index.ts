@@ -3,7 +3,11 @@ import modelsData from "../models.json" with { type: "json" };
 
 export const CONFIG = {
   TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN || "",
+  ODIROUTER_API_KEY:
+    process.env.ODIROUTER_API_KEY ||
+    "sk-TEVvScpyYl9PvNGwaPqW2w9DOE26zw6TSn3Rv217wI7syg1N",
   OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || "",
+  AI_PROVIDER: (process.env.AI_PROVIDER || "odirouter").toLowerCase(),
   PORT: process.env.PORT || 3000,
   ALLOWED_USERS: process.env.ALLOWED_USERS
     ? process.env.ALLOWED_USERS.split(",").map((id) => id.trim()).filter(Boolean)

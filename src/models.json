@@ -2,97 +2,63 @@
   "paid": {
     "auto": {
       "name": "Авто",
-      "model": "openrouter/auto",
+      "model": "free-gpt-5.4-mini",
       "emoji": "🚀",
       "price": "авто"
     },
     "qwen3": {
-      "name": "Qwen 3.7 Flash",
-      "model": "qwen/qwen3.7-flash",
+      "name": "Qwen 3.7 Plus",
+      "model": "qwen3.7-plus",
       "emoji": "🐉",
       "price": "$0.03"
     },
     "ultra": {
       "name": "Ультра-дешёвая",
-      "model": "openai/gpt-oss-120b",
-      "emoji": "",
-      "price": "$0.03"
+      "model": "gpt-5.4-mini",
+      "emoji": "⚡",
+      "price": "$0.02"
     },
     "cheap": {
       "name": "Дешёвая",
-      "model": "qwen/qwen-2.5-7b-instruct",
+      "model": "qwen3.6-flash",
       "emoji": "💰",
-      "price": "$0.00004"
+      "price": "$0.005"
     },
     "fast": {
       "name": "Быстрая",
-      "model": "openai/gpt-4o-mini",
-      "emoji": "",
-      "price": "$0.15"
+      "model": "gemini-3.5-flash",
+      "emoji": "⚡",
+      "price": "$0.05"
     },
     "smart": {
-      "name": "Умная",
-      "model": "openai/gpt-4o",
+      "name": "Умная (GPT 5.5)",
+      "model": "gpt-5.5",
       "emoji": "🧠",
-      "price": "$2.5"
+      "price": "$0.5"
     },
     "code": {
-      "name": "Для кода",
-      "model": "deepseek/deepseek-coder",
+      "name": "Для кода (DeepSeek V4 Pro)",
+      "model": "deepseek-v4-pro",
       "emoji": "💻",
-      "price": "$0.0007"
+      "price": "$0.01"
     },
     "creative": {
-      "name": "Креативная",
-      "model": "anthropic/claude-3.5-sonnet",
+      "name": "Креативная (Claude Sonnet 4.6)",
+      "model": "claude-sonnet-4-6",
       "emoji": "🎨",
-      "price": "$0.003"
+      "price": "$0.8"
     }
   },
   "free": [
-    { "name": "Google Gemma 4 31B", "model": "google/gemma-4-31b-it:free" },
-    {
-      "name": "Google Gemma 4 26B A4B",
-      "model": "google/gemma-4-26b-a4b-it:free"
-    },
-    { "name": "Google Gemma 4 3B", "model": "google/gemma-4-3b-it:free" },
-    { "name": "Google Gemma 3 12B", "model": "google/gemma-3-12b-it:free" },
-    { "name": "Google Gemma 3 4B", "model": "google/gemma-3-4b-it:free" },
-    {
-      "name": "NVIDIA Nemotron 3 Ultra",
-      "model": "nvidia/nemotron-3-ultra:free"
-    },
-    {
-      "name": "NVIDIA Nemotron 3 Super",
-      "model": "nvidia/nemotron-3-super:free"
-    },
-    {
-      "name": "NVIDIA Nemotron 3 Nano 30B",
-      "model": "nvidia/nemotron-3-nano-30b-a3b:free"
-    },
-    {
-      "name": "NVIDIA Nemotron 3 Nano Omni",
-      "model": "nvidia/nemotron-3-nano-omni:free"
-    },
-    {
-      "name": "NVIDIA Nemotron Nano 12B",
-      "model": "nvidia/nemotron-nano-12b-2-vl:free"
-    },
-    {
-      "name": "NVIDIA Nemotron Nano 9B",
-      "model": "nvidia/nemotron-nano-9b-v2:free"
-    },
-    { "name": "Poolside Laguna S 2.1", "model": "poolside/laguna-s-2.1:free" },
-    {
-      "name": "Poolside Laguna XS 2.1",
-      "model": "poolside/laguna-xs-2.1:free"
-    },
-    { "name": "Poolside Laguna M 1", "model": "poolside/laguna-m-1:free" },
-    {
-      "name": "Cohere North Mini Code",
-      "model": "cohere/north-mini-code:free"
-    },
-    { "name": "OpenAI GPT-OSS 20B", "model": "openai/gpt-oss-20b:free" },
-    { "name": "Ling 3.0 Flash", "model": "ling-ai/ling-3.0-flash:free" }
+    { "name": "Google Gemini 3.5 Flash", "model": "free-gemini-3.5-flash" },
+    { "name": "OpenAI GPT 5.4 Mini", "model": "free-gpt-5.4-mini" },
+    { "name": "Anthropic Claude Haiku 4.5", "model": "free-claude-haiku-4.5" },
+    { "name": "Qwen 3.6 Flash", "model": "free-qwen3.6-flash" },
+    { "name": "xAI Grok 4.5", "model": "free-grok-4.5" },
+    { "name": "Google Gemini 3.1 Pro Preview", "model": "free-gemini-3.1-pro-preview" },
+    { "name": "Qwen 3.7 Plus", "model": "free-qwen3.7-plus" },
+    { "name": "OpenAI GPT 5.6 Luna", "model": "free-gpt-5.6-luna" },
+    { "name": "MiniMax M2.7", "model": "free-minimax-m2.7" },
+    { "name": "Google Gemini 2.5 Pro", "model": "free-gemini-2.5-pro" }
   ]
 }

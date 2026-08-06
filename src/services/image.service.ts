@@ -1,46 +1,40 @@
 import fetch from "node-fetch";
 import { Context, InputFile } from "grammy";
-import { CONFIG } from "../config/index.js";
+import { executeWithFallback } from "./provider.service.js";
 
 export async function generateImage(prompt: string): Promise<string | null> {
   try {
-    const response = await fetch(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${CONFIG.OPENROUTER_API_KEY}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://github.com/your-repo",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-3.1-flash-lite-image",
-          messages: [{ role: "user", content: prompt }],
-        }),
-      }
-    );
+    return await executeWithFallback(async (client, provider) => {
+      const model =
+        provider === "odirouter" ? "flux-pro-1.1" : "google/gemini-3.1-flash-lite-image";
 
-    const data: any = await response.json();
+      const response = await client.chat.completions.create({
+        model: model,
+        messages: [{ role: "user", content: prompt }],
+      });
 
-    if (data.choices?.[0]?.message?.images) {
-      for (const img of data.choices[0].message.images) {
-        if (img.image_url?.url) return img.image_url.url;
-      }
-    }
+      const message: any = response.choices?.[0]?.message;
 
-    if (data.choices?.[0]?.message?.content) {
-      const content = data.choices[0].message.content;
-      if (typeof content === "string") {
-        const urlMatch = content.match(/https?:\/\/[^\s]+/);
-        if (urlMatch) return urlMatch[0];
-        if (content.startsWith("data:image")) return content;
-        if (content.length > 100 && !content.includes(" ")) {
-          return `data:image/png;base64,${content}`;
+      if (message?.images) {
+        for (const img of message.images) {
+          if (img.image_url?.url) return img.image_url.url;
         }
       }
-    }
 
-    return null;
+      if (message?.content) {
+        const content = message.content;
+        if (typeof content === "string") {
+          const urlMatch = content.match(/https?:\/\/[^\s]+/);
+          if (urlMatch) return urlMatch[0];
+          if (content.startsWith("data:image")) return content;
+          if (content.length > 100 && !content.includes(" ")) {
+            return `data:image/png;base64,${content}`;
+          }
+        }
+      }
+
+      return null;
+    });
   } catch (error: any) {
     console.error("Ошибка генерации изображения:", error.message);
     return null;

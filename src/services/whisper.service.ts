@@ -1,11 +1,6 @@
 import fetch from "node-fetch";
-import { OpenAI, toFile } from "openai";
-import { CONFIG } from "../config/index.js";
-
-const openai = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: CONFIG.OPENROUTER_API_KEY,
-});
+import { toFile } from "openai";
+import { executeWithFallback } from "./provider.service.js";
 
 export async function transcribeVoice(fileUrl: string): Promise<string> {
   const audioResponse = await fetch(fileUrl);
@@ -15,11 +10,14 @@ export async function transcribeVoice(fileUrl: string): Promise<string> {
     type: "audio/ogg",
   });
 
-  const transcription = await openai.audio.transcriptions.create({
-    model: "whisper-1",
-    file: file,
-    language: "ru",
+  return await executeWithFallback(async (client, provider) => {
+    const model = provider === "odirouter" ? "minimax-speech-01-turbo" : "whisper-1";
+    const transcription = await client.audio.transcriptions.create({
+      model: model,
+      file: file,
+      language: "ru",
+    });
+    return transcription.text || "";
   });
-
-  return transcription.text || "";
 }
+

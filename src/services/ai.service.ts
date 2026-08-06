@@ -1,20 +1,12 @@
 import { OpenAI } from "openai";
 import { Context } from "grammy";
-import { CONFIG, SYSTEM_PROMPT } from "../config/index.js";
+import { SYSTEM_PROMPT } from "../config/index.js";
 import {
   getHistory,
   getMessageByMsgId,
   getUserModel,
 } from "../db/index.js";
-
-const openai = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: CONFIG.OPENROUTER_API_KEY,
-  defaultHeaders: {
-    "HTTP-Referer": "https://github.com/your-repo",
-    "X-Title": "Universal TG Bot",
-  },
-});
+import { executeWithFallback } from "./provider.service.js";
 
 export function getThreadId(ctx: Context): string {
   if (!ctx.chat) return "";
@@ -114,10 +106,13 @@ export async function generateChatResponse(
     }
   }
 
-  const response = await openai.chat.completions.create({
-    model: model,
-    messages: messages,
+  return await executeWithFallback(async (client, _provider, getEffectiveModel) => {
+    const effectiveModel = getEffectiveModel(model);
+    const response = await client.chat.completions.create({
+      model: effectiveModel,
+      messages: messages,
+    });
+    return response.choices[0]?.message?.content || "Пустой ответ.";
   });
-
-  return response.choices[0]?.message?.content || "Пустой ответ.";
 }
+
