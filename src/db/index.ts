@@ -112,7 +112,11 @@ export function getUserModel(chatId: string): string {
   const row = db
     .prepare("SELECT model FROM user_settings WHERE chat_id = ?")
     .get(chatId) as any;
-  return row?.model || "openrouter/auto";
+  const currentModel = row?.model;
+  if (!currentModel || currentModel === "openrouter/auto") {
+    return "free-gpt-5.4-mini";
+  }
+  return currentModel;
 }
 
 export function setUserModel(chatId: string, model: string) {

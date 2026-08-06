@@ -1,52 +1,64 @@
 {
   "paid": {
     "auto": {
-      "name": "Авто",
+      "name": "Авто (Бесплатная GPT 5.4)",
       "model": "free-gpt-5.4-mini",
       "emoji": "🚀",
-      "price": "авто"
+      "price": "бесплатно"
     },
-    "qwen3": {
-      "name": "Qwen 3.7 Plus",
-      "model": "qwen3.7-plus",
-      "emoji": "🐉",
-      "price": "$0.03"
+    "luna": {
+      "name": "GPT 5.6 Luna",
+      "model": "gpt-5.6-luna",
+      "emoji": "🌙",
+      "price": "$0.002 / 1M токенов"
     },
     "ultra": {
-      "name": "Ультра-дешёвая",
-      "model": "gpt-5.4-mini",
+      "name": "GPT 5.6 Terra (Ультра-дешёвая)",
+      "model": "gpt-5.6-terra",
       "emoji": "⚡",
-      "price": "$0.02"
+      "price": "$0.02 / 1M токенов"
     },
     "cheap": {
-      "name": "Дешёвая",
+      "name": "Qwen 3.6 Flash (Дешёвая)",
       "model": "qwen3.6-flash",
       "emoji": "💰",
-      "price": "$0.005"
+      "price": "$0.005 / 1M токенов"
+    },
+    "qwen3": {
+      "name": "Qwen 3.8 Max",
+      "model": "qwen3.8-max-preview",
+      "emoji": "🐉",
+      "price": "$0.05 / 1M токенов"
     },
     "fast": {
-      "name": "Быстрая",
-      "model": "gemini-3.5-flash",
+      "name": "Gemini 3.6 Flash (Быстрая)",
+      "model": "gemini-3.6-flash",
       "emoji": "⚡",
-      "price": "$0.05"
+      "price": "$0.075 / 1M токенов"
     },
     "smart": {
-      "name": "Умная (GPT 5.5)",
+      "name": "GPT 5.5 (Умная)",
       "model": "gpt-5.5",
       "emoji": "🧠",
-      "price": "$0.5"
+      "price": "$0.049 / 1M токенов"
     },
     "code": {
-      "name": "Для кода (DeepSeek V4 Pro)",
+      "name": "DeepSeek V4 Pro (Для кода)",
       "model": "deepseek-v4-pro",
       "emoji": "💻",
-      "price": "$0.01"
+      "price": "$0.01 / 1M токенов"
     },
     "creative": {
-      "name": "Креативная (Claude Sonnet 4.6)",
-      "model": "claude-sonnet-4-6",
+      "name": "Claude Opus 4.8 (Креативная)",
+      "model": "claude-opus-4-8",
       "emoji": "🎨",
-      "price": "$0.8"
+      "price": "$0.125 / 1M токенов"
+    },
+    "opus5": {
+      "name": "Claude Opus 5 (Флагман)",
+      "model": "claude-opus-5",
+      "emoji": "👑",
+      "price": "$0.15 / 1M токенов"
     }
   },
   "free": [
